@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSignUp } from "@clerk/nextjs";
+import { useSignIn } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
@@ -18,12 +18,10 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Eye, EyeOff } from "lucide-react";
 
-export default function SignUp() {
-  const { isLoaded, signUp, setActive } = useSignUp();
+export default function SignIn() {
+  const { isLoaded, signIn, setActive } = useSignIn();
   const [emailAddress, setEmailAddress] = useState("");
   const [password, setPassword] = useState("");
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -39,40 +37,19 @@ export default function SignUp() {
     }
 
     try {
-      await signUp.create({
-        emailAddress,
+      const result = await signIn.create({
+        identifier: emailAddress,
         password,
       });
 
-      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-
-      setPendingVerification(true);
-    } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
-      setError(err.errors[0].message);
-    }
-  }
-
-  async function onPressVerify(e: React.FormEvent) {
-    e.preventDefault();
-    if (!isLoaded) {
-      return;
-    }
-
-    try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
-        code,
-      });
-      if (completeSignUp.status !== "complete") {
-        console.log(JSON.stringify(completeSignUp, null, 2));
-      }
-
-      if (completeSignUp.status === "complete") {
-        await setActive({ session: completeSignUp.createdSessionId });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
         router.push("/dashboard");
+      } else {
+        console.error(JSON.stringify(result, null, 2));
       }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
+      console.error("error", err.errors[0].message);
       setError(err.errors[0].message);
     }
   }
@@ -82,85 +59,62 @@ export default function SignUp() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">
-            Sign Up for Todo Master
+            Sign In to Todo Master
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {!pendingVerification ? (
-            <form onSubmit={submit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+          <form onSubmit={submit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                type="email"
+                id="email"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
                 <Input
-                  type="email"
-                  id="email"
-                  value={emailAddress}
-                  onChange={(e) => setEmailAddress(e.target.value)}
+                  type={showPassword ? "text" : "password"}
+                  id="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-gray-500" />
+                  )}
+                </button>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
-                <div className="relative">
-                  <Input
-                    type={showPassword ? "text" : "password"}
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-2 top-1/2 -translate-y-1/2"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="h-4 w-4 text-gray-500" />
-                    ) : (
-                      <Eye className="h-4 w-4 text-gray-500" />
-                    )}
-                  </button>
-                </div>
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button type="submit" className="w-full">
-                Sign Up
-              </Button>
-            </form>
-          ) : (
-            <form onSubmit={onPressVerify} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="code">Verification Code</Label>
-                <Input
-                  id="code"
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  placeholder="Enter verification code"
-                  required
-                />
-              </div>
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              <Button type="submit" className="w-full">
-                Verify Email
-              </Button>
-            </form>
-          )}
+            </div>
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+            <Button type="submit" className="w-full">
+              Sign In
+            </Button>
+          </form>
         </CardContent>
         <CardFooter className="justify-center">
           <p className="text-sm text-muted-foreground">
-            Already have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
-              href="/sign-in"
+              href="/sign-up"
               className="font-medium text-primary hover:underline"
             >
-              Sign in
+              Sign up
             </Link>
           </p>
         </CardFooter>
